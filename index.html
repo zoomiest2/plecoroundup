@@ -268,7 +268,7 @@ async function connectDb(){
         pending.filter(c=>!have.has(c.id)).forEach(c=>{ cards.push(c); store.save(c); });
         try{ localStorage.removeItem(LS); }catch{}
       }
-      render();
+      backfillPinyin(); render();
     }, e => say('#capStatus','Sync paused: '+e.message,'err'));
   }catch{}
 }
@@ -283,8 +283,9 @@ function render(){
   $('#stats').innerHTML =
     `<span class="chip">${cards.length} total</span><span class="chip ok">${fresh.length} to export</span>` +
     (todo.length?`<span class="chip warn">${todo.length} incomplete</span>`:'');
-  $('#fillBtn').hidden = !todo.length || fillUnavailable;
-  $('#fillBtn').textContent = `Fill ${todo.length} with Claude`;
+  const fb = $('#fillBtn');
+  fb.hidden = !todo.length;
+  if(!filling){ fb.disabled = fillUnavailable && !samplePending; fb.textContent = `Fill ${todo.length} with Claude`; }
   const done = cards.filter(c=>c.exported).length;
   const pb = $('#purgeBtn'); if(!pb.classList.contains('armed')){ pb.disabled = !done; pb.textContent = done?`Delete ${done} exported card${done>1?'s':''}`:'Delete exported cards'; }
   const shown = filter==='all'?cards:filter==='todo'?todo:fresh;
@@ -323,6 +324,7 @@ $('#addBtn').onclick = () => {
   $('#paste').value = ''; saveDraft();
   say('#capStatus', `Added ${parsed.length} card${parsed.length>1?'s':''}.` + (missing? ` ${missing} still need filling.`:''), 'good');
   filter = 'new'; syncFilter(); render();
+  if(missing) fillMissing();
 };
 $('#clearBtn').onclick = () => { $('#paste').value=''; saveDraft(); say('#capStatus',''); };
 
@@ -342,13 +344,17 @@ function syncFilter(){ document.querySelectorAll('.filter button').forEach(b=>b.
 document.querySelectorAll('.filter button').forEach(b=>b.onclick=()=>{ filter=b.dataset.f; syncFilter(); render(); });
 
 /* ---------- Claude fill ---------- */
-let sample = null, fillUnavailable = true;
-use('sample').then(s=>{ sample=s; fillUnavailable=!s; render(); }).catch(()=>{});
+let sample = null, fillUnavailable = true, filling = false, samplePending = true;
+use('sample').then(s=>{ sample=s; fillUnavailable=!s; samplePending=false; render();
+  if(!s && cards.some(c=>!complete(c))) say('#fillStatus','Fill with Claude isn’t available in this view. Open the page on claude.ai while signed in, or type the missing fields.','err');
+}).catch(()=>{ samplePending=false; render(); });
 
-$('#fillBtn').onclick = async () => {
+$('#fillBtn').onclick = () => fillMissing();
+async function fillMissing(){
   const todo = cards.filter(c=>!complete(c)).slice(0,40);
-  if(!todo.length || !sample) return;
-  const btn = $('#fillBtn'); btn.disabled = true;
+  if(!todo.length || filling) return;
+  if(!sample){ say('#fillStatus', samplePending ? 'Claude is still connecting. Tap Fill again in a moment.' : 'Fill with Claude isn’t available in this view. Open the page on claude.ai while signed in, or type the missing fields.', 'err'); return; }
+  const btn = $('#fillBtn'); btn.disabled = true; filling = true; btn.textContent = 'Filling…';
   say('#fillStatus',`Asking Claude to fill ${todo.length} card${todo.length>1?'s':''}…`);
   const items = todo.map(c=>({id:c.id, hanzi:c.hanzi||null, pinyin:c.pinyin||null, english:c.english||null}));
   const prompt = `You are helping a learner of Mandarin build flashcards. Each item below has at least one of: hanzi (Simplified Chinese), pinyin, english. Fill in every null field.
@@ -364,18 +370,20 @@ ${JSON.stringify(items)}`;
   try{
     const out = await sample.json(prompt,{modelTier:'default'});
     let n=0;
-    for(const r of Array.isArray(out)?out:[]){
+    const arr = Array.isArray(out) ? out : (out && Array.isArray(out.items) ? out.items : []);
+    for(const r of arr){
       const c = cards.find(x=>x.id===r.id); if(!c) continue;
       for(const k of ['hanzi','pinyin','english']) if(!c[k] && typeof r[k]==='string' && r[k].trim()) c[k]=r[k].trim();
       store.save(c); n++;
     }
-    say('#fillStatus', `Filled ${n} card${n===1?'':'s'}. Check them before exporting.`, 'good');
+    const left = cards.filter(c=>!complete(c)).length;
+    say('#fillStatus', `Filled ${n} card${n===1?'':'s'}. ` + (left ? `${left} still incomplete: tap Fill again or edit them.` : 'Check them before exporting.'), left?'err':'good');
   }catch(e){
     const msg = {not_granted:'Claude access was declined for this page.',rate_limited:'Too many requests just now. Try again in a minute.',invalid_json:'Claude’s answer could not be read. Try again.'}[e.code] || ('Could not fill: '+(e.message||e.code));
     say('#fillStatus', msg, 'err');
     if(e.code==='not_granted'){ fillUnavailable=true; }
-  }finally{ btn.disabled=false; render(); }
-};
+  }finally{ filling=false; btn.disabled=false; render(); }
+}
 
 /* ---------- export ---------- */
 const clean = s => String(s||'').replace(/[\t\r\n]+/g,' ').trim();
@@ -439,8 +447,12 @@ try{ $('#paste').value = localStorage.getItem('pleco-catcher-draft')||''; $('#ca
 $('#paste').addEventListener('input', saveDraft);
 $('#category').addEventListener('change', ()=>{ try{ localStorage.setItem('pleco-catcher-cat',$('#category').value); }catch{} });
 
+function backfillPinyin(){
+  if(!window.pinyinPro) return;
+  cards.forEach(c=>{ if(c.hanzi && !c.pinyin){ const p = autoPinyin(c.hanzi); if(p){ c.pinyin=p; store.save(c); } } });
+}
 window.__parse = parse;
-render();
+backfillPinyin(); render();
 connectDb();
 })();
 </script>
