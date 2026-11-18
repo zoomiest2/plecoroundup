@@ -51,6 +51,9 @@ details pre{white-space:pre-wrap;font:13px/1.6 var(--f-body),var(--f-han);backgr
 .chip.ok{background:var(--jade-soft);color:var(--jade);border-color:transparent}
 .cards{display:grid;gap:8px}
 .card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.card.suspect{border-color:var(--seal);background:linear-gradient(var(--seal-soft),var(--seal-soft)) left/4px 100% no-repeat,var(--surface)}
+.tag.warn{color:var(--seal);font-weight:600}
+.version{color:var(--muted);font-size:12px;text-align:center}
 .card.incomplete{border-color:var(--amber);background:linear-gradient(var(--amber-soft),var(--amber-soft)) left/4px 100% no-repeat,var(--surface)}
 .card .fields{display:grid;gap:2px;min-width:0}
 .card input{border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:6px}
@@ -156,6 +159,7 @@ Can you speak more slowly?
       </div>
     </section>
   </div>
+  <div class="version">Version 4 · parser handles Latin words inside Chinese (VPN, iPhone)</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.26.0/dist/index.js"></script>
@@ -256,6 +260,8 @@ function autoPinyin(h){
   try{ return window.pinyinPro ? window.pinyinPro.pinyin(h,{nonZh:'consecutive'}).replace(/\s+([，。？！,.?!])/g,'$1') : ''; }catch{ return ''; }
 }
 const complete = c => c.hanzi && c.pinyin && c.english;
+// fields that look swapped or split: Chinese in the English/pinyin field, or a long English phrase in the characters field
+const suspect = c => HAN.test(c.english||'') || HAN.test(c.pinyin||'') || /[A-Za-z]{2,}\s+[a-z]{2,}\s+[a-z]{2,}/.test(c.hanzi||'');
 
 /* ---------- storage ---------- */
 const LS = 'pleco-catcher-cards';
@@ -299,7 +305,8 @@ function render(){
   const todo = cards.filter(c=>!complete(c)), fresh = cards.filter(c=>!c.exported);
   $('#stats').innerHTML =
     `<span class="chip">${cards.length} total</span><span class="chip ok">${fresh.length} to export</span>` +
-    (todo.length?`<span class="chip warn">${todo.length} incomplete</span>`:'');
+    (todo.length?`<span class="chip warn">${todo.length} incomplete</span>`:'') +
+    (cards.some(suspect)?`<span class="chip warn">${cards.filter(suspect).length} to check</span>`:'');
   const fb = $('#fillBtn');
   fb.hidden = !todo.length;
   if(!filling){ fb.disabled = fillUnavailable && !samplePending; fb.textContent = `Fill ${todo.length} with Claude`; }
@@ -312,7 +319,7 @@ function render(){
     return;
   }
   box.innerHTML = shown.map(c=>`
-    <div class="card${complete(c)?'':' incomplete'}" data-id="${c.id}">
+    <div class="card${suspect(c)?' suspect':complete(c)?'':' incomplete'}" data-id="${c.id}">
       <div class="fields">
         <input class="han" data-k="hanzi" value="${esc(c.hanzi)}" placeholder="characters missing" aria-label="Characters">
         <input class="py" data-k="pinyin" value="${esc(c.pinyin)}" placeholder="pinyin missing" aria-label="Pinyin">
@@ -321,6 +328,7 @@ function render(){
       <div class="side">
         <button class="ghost" data-del aria-label="Delete card">✕</button>
         <span class="tag${c.exported?' sent':''}">${c.exported?'exported':'new'}</span>
+        ${suspect(c)?'<span class="tag warn">Check this card</span>':''}
       </div>
     </div>`).join('');
 }
