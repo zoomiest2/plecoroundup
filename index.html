@@ -1,0 +1,446 @@
+<title>Pleco Phrase Catcher</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&family=Noto+Sans+SC:wght@400;600&display=swap">
+<style>
+/* Layout: phone-first single column (capture → deck → export); two columns from 900px. */
+:root{
+  --bg:#F3F6F5; --surface:#FFFFFF; --ink:#14201C; --muted:#5D6B66; --line:#D5DEDA;
+  --jade:#0E7458; --jade-soft:#E1F0EA; --seal:#B3322A; --seal-soft:#F8E6E3; --amber:#9A6200; --amber-soft:#FBF0D9;
+  --f-display:"Space Grotesk",system-ui,sans-serif;
+  --f-body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-han:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1513; --surface:#17201D; --ink:#E4ECE8; --muted:#94A39D; --line:#2A3632;
+  --jade:#4CC59C; --jade-soft:#173329; --seal:#F07F72; --seal-soft:#3A1F1C; --amber:#E6B455; --amber-soft:#352A14; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1513; --surface:#17201D; --ink:#E4ECE8; --muted:#94A39D; --line:#2A3632;
+  --jade:#4CC59C; --jade-soft:#173329; --seal:#F07F72; --seal-soft:#3A1F1C; --amber:#E6B455; --amber-soft:#352A14; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{font:700 1.6rem/1.1 var(--f-display);margin:0;letter-spacing:-.01em}
+h1 .han{font-family:var(--f-han);color:var(--seal);font-weight:600;margin-right:6px}
+header p{margin:0;color:var(--muted)}
+h2{font:600 1.05rem/1.2 var(--f-display);margin:0;text-wrap:balance}
+.cols{display:grid;gap:20px;align-items:start}
+@media(min-width:900px){.cols{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+textarea,input[type=text],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;width:100%}
+input[type=text],select{padding:9px 10px}
+textarea{min-height:220px;padding:12px;resize:vertical;font-family:var(--f-body),var(--f-han);line-height:1.6}
+textarea:focus,input:focus,select:focus,button:focus-visible{outline:2px solid var(--jade);outline-offset:1px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:600 14px/1 var(--f-body);border-radius:8px;padding:11px 14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+button.primary{background:var(--jade);border-color:var(--jade);color:var(--surface)}
+button:disabled{opacity:.5;cursor:default}
+button.danger{color:var(--seal);border-color:var(--seal)}
+button.danger.armed{background:var(--seal);color:var(--surface)}
+button.ghost{background:none;border-color:transparent;color:var(--muted);padding:6px 8px}
+.hint{color:var(--muted);font-size:13px}
+.hint code{font-family:var(--f-body),var(--f-han);background:var(--bg);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+details pre{white-space:pre-wrap;font:13px/1.6 var(--f-body),var(--f-han);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0 0}
+.stats{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--bg);color:var(--muted);border:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+.chip.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}
+.chip.ok{background:var(--jade-soft);color:var(--jade);border-color:transparent}
+.cards{display:grid;gap:8px}
+.card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.card.incomplete{border-color:var(--amber);background:linear-gradient(var(--amber-soft),var(--amber-soft)) left/4px 100% no-repeat,var(--surface)}
+.card .fields{display:grid;gap:2px;min-width:0}
+.card input{border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:6px}
+.card input:hover{border-color:var(--line)}
+.card input.han{font:600 1.3rem/1.3 var(--f-han)}
+.card input.py{color:var(--jade);font-size:14px}
+.card input.en{font-size:14px}
+.card input::placeholder{color:var(--amber);font-style:italic}
+.card .side{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.tag{font-size:11px;color:var(--muted);white-space:nowrap}
+.tag.sent{color:var(--jade)}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:20px;color:var(--muted);text-align:center}
+.status{font-size:13px;min-height:1.2em}
+.status.err{color:var(--seal)}
+.status.good{color:var(--jade)}
+.export{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:12px}
+.export label{font-size:13px;color:var(--muted);display:grid;gap:4px}
+.grid2{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+#fallback{min-height:140px;font-size:13px}
+.filter{display:flex;gap:4px}
+.filter button{padding:6px 10px;font-size:13px}
+.filter button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .15s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1><span class="han">记</span>Pleco Phrase Catcher</h1>
+    <p>Paste phrases, fill the gaps, export a Pleco flashcard file.</p>
+  </header>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="cap-h">
+      <div class="panel-head"><h2 id="cap-h">Capture</h2><span class="hint">Any mix of formats</span></div>
+      <textarea id="paste" spellcheck="false" placeholder="我想点一杯冰美式 | wǒ xiǎng diǎn yì bēi bīng měishì | I'd like an iced americano
+请问洗手间在哪里？ qǐngwèn xǐshǒujiān zài nǎlǐ? Excuse me, where is the restroom?
+
+太贵了
+tài guì le
+That's too expensive
+
+Can you speak more slowly?
+
+明天见"></textarea>
+      <div class="row">
+        <button class="primary" id="addBtn">Add to deck</button>
+        <button id="clearBtn" class="ghost">Clear</button>
+      </div>
+      <div class="status" id="capStatus" role="status"></div>
+      <details>
+        <summary>What can I paste?</summary>
+        <div class="hint" style="margin-top:8px;display:grid;gap:6px">
+          <div>One phrase per line, fields in any order, split by <code>|</code>, a tab, <code> - </code> or <code>=</code>. Or no separator at all: <code>谢谢 xièxie thank you</code>.</div>
+          <div>Blocks of 2–3 lines (characters, pinyin, English) with a blank line between phrases.</div>
+          <div>Only English, or only characters? Add it anyway. Pinyin is filled from the characters automatically, and <b>Fill with Claude</b> translates whatever is still missing.</div>
+        </div>
+      </details>
+    </section>
+
+    <section class="panel" aria-labelledby="deck-h">
+      <div class="panel-head">
+        <h2 id="deck-h">Deck</h2>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="row" style="justify-content:space-between">
+        <div class="filter" role="group" aria-label="Show">
+          <button data-f="new" aria-pressed="true">Not exported</button>
+          <button data-f="todo" aria-pressed="false">Needs filling</button>
+          <button data-f="all" aria-pressed="false">All</button>
+        </div>
+        <button id="fillBtn" hidden>Fill with Claude</button>
+      </div>
+      <div class="status" id="fillStatus" role="status"></div>
+      <div class="cards" id="cards"></div>
+
+      <div class="export">
+        <h2>Export to Pleco</h2>
+        <div class="grid2">
+          <label>Pleco category (folder)
+            <input type="text" id="category" value="Phrase Catcher">
+          </label>
+          <label>Include
+            <select id="scope"><option value="new">Cards not yet exported</option><option value="all">Every card</option></select>
+          </label>
+        </div>
+        <div class="row">
+          <button class="primary" id="exportBtn">Export .txt</button>
+          <button id="copyBtn">Copy file text</button>
+        </div>
+        <div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding-top:12px">
+          <span class="hint">Imported into Pleco? Clear exported cards to start fresh.</span>
+          <button id="purgeBtn" class="danger" disabled>Delete exported cards</button>
+        </div>
+        <div class="status" id="expStatus" role="status"></div>
+        <textarea id="fallback" readonly hidden aria-label="Pleco file text"></textarea>
+        <details>
+          <summary>Importing on your phone</summary>
+          <div class="hint" style="margin-top:8px;display:grid;gap:6px">
+            <div>Save the file to Files (iPhone) or Downloads (Android). In Pleco: <b>Flashcards → Import / Export → Import Cards</b>, pick the file, keep format as plain text, then tap Import.</div>
+            <div>Each line is <code>characters⇥pinyin⇥English</code>, and the <code>//</code> line puts the cards in your category.</div>
+          </div>
+        </details>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.26.0/dist/index.js"></script>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const use = n => (window.claude && window.claude.use) ? window.claude.use(n) : Promise.resolve(null);
+const HAN = /[㐀-鿿豈-﫿]/;
+const HAN_RUN = /[㐀-鿿豈-﫿][㐀-鿿豈-﫿　-〿＀-￯0-9\s]*[㐀-鿿豈-﫿　-〿！？，．]?/;
+const TONED = /[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]|[a-zü]+[1-5]\b/i;
+const SYL = /^(?:(?:zh|ch|sh|[bpmfdtnlgkhjqxrzcsyw])?(?:iang|iong|uang|ueng|ang|eng|ing|ong|iao|ian|uai|uan|üan|van|ai|ei|ao|ou|an|en|in|un|ün|vn|ia|ie|iu|ua|uo|ui|ue|üe|ve|er|a|o|e|i|u|v|ü)r?)+$/;
+const STRIP = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[1-5]/g,'').toLowerCase();
+
+let cards = [];          // {id, hanzi, pinyin, english, created, exported, pyAuto}
+let store = null;        // {save(card), remove(id)}
+let filter = 'new';
+
+/* ---------- parsing ---------- */
+function pinyinish(tok){ const t = STRIP(tok).replace(/[^a-zü]/g,''); return t.length>0 && SYL.test(t); }
+function pyScore(s){ const toks = s.split(/\s+/).filter(Boolean); if(!toks.length) return 0; return toks.filter(pinyinish).length / toks.length; }
+
+function splitLatin(s){
+  // leading toned tokens are pinyin, the rest is English
+  const toks = s.trim().split(/\s+/); let i = 0;
+  const NEUTRAL = /^(ma|le|de|ne|ba|a|ya|wa|la|zi|men|me|ge|zhe|guo|li|shang|tou|mian|bian)[,.?!。？！，]?$/i;
+  while(i < toks.length && (TONED.test(toks[i]) || (i>0 && pinyinish(toks[i]) && (NEUTRAL.test(toks[i]) || toks.slice(i+1).some(t=>TONED.test(t)))))) i++;
+  if(i===0) return {english:s.trim()};
+  return {pinyin:toks.slice(0,i).join(' '), english:toks.slice(i).join(' ')};
+}
+
+function parseLine(line){
+  const out = {};
+  const parts = line.split(/\t|\s*\|\s*|\s+[-–—=]\s+|\s*：\s*|:\s+/).map(x=>x.trim()).filter(Boolean);
+  const latin = [];
+  for(const p of parts){
+    if(HAN.test(p)){
+      const m = p.match(HAN_RUN);
+      const han = m[0].trim();
+      if(!out.hanzi) out.hanzi = han;
+      const rest = (p.slice(0,m.index) + ' ' + p.slice(m.index+m[0].length)).trim();
+      if(rest) latin.push(rest);
+    } else latin.push(p);
+  }
+  const loose = [];
+  for(const l of latin){
+    if(TONED.test(l)){
+      const r = parts.length>1 ? {pinyin:l} : splitLatin(l);
+      if(r.pinyin && !out.pinyin) out.pinyin = r.pinyin; else if(r.pinyin) loose.push(r.pinyin);
+      if(r.english) loose.push(r.english);
+    } else loose.push(l);
+  }
+  if(loose.length >= 2 && !out.pinyin){
+    // two untoned latin fields: the more pinyin-like one is pinyin
+    const scored = loose.map(s=>({s,v:pyScore(s)})).sort((a,b)=>b.v-a.v);
+    if(scored[0].v===1 && scored[1].v<1){ out.pinyin = scored[0].s; loose.splice(loose.indexOf(scored[0].s),1); }
+  }
+  if(loose.length) out.english = loose.join('; ');
+  return out;
+}
+
+function parse(text){
+  const result = []; let cur = null;
+  const flush = () => { if(cur && (cur.hanzi||cur.english||cur.pinyin)) result.push(cur); cur = null; };
+  for(let raw of text.split(/\r?\n/)){
+    const line = raw.replace(/^\s*(?:\d+[.)、]|[-*•·])\s+/,'').trim();
+    if(!line){ flush(); continue; }
+    const f = parseLine(line);
+    const n = Object.keys(f).length;
+    if(n >= 2){ flush(); result.push(f); continue; }
+    const key = Object.keys(f)[0];
+    if(!cur) cur = {};
+    if(cur[key]){ flush(); cur = {}; }
+    cur[key] = f[key];
+  }
+  flush();
+  return result;
+}
+
+/* ---------- pinyin from characters ---------- */
+function autoPinyin(h){
+  try{ return window.pinyinPro ? window.pinyinPro.pinyin(h,{nonZh:'consecutive'}).replace(/\s+([，。？！,.?!])/g,'$1') : ''; }catch{ return ''; }
+}
+const complete = c => c.hanzi && c.pinyin && c.english;
+
+/* ---------- storage ---------- */
+const LS = 'pleco-catcher-cards';
+const local = {
+  load(){ try{ return JSON.parse(localStorage.getItem(LS)||'[]'); }catch{ return []; } },
+  persist(){ try{ localStorage.setItem(LS, JSON.stringify(cards)); }catch{} },
+  save(){ this.persist(); }, remove(){ this.persist(); }
+};
+cards = local.load(); store = local;
+
+async function connectDb(){
+  try{
+    const [db, user] = await Promise.all([use('db'), use('user')]);
+    if(!db || !user) return;
+    const uid = await user.id(); if(!uid) return;
+    const col = db.collection('data/users/'+uid+'/cards');
+    const pending = cards.slice();   // cards captured on this device before sync connected
+    store = {
+      save(c){ const {id, ...d} = c; col.doc(id).set(d).catch(e=>say('#capStatus','Could not save to your synced deck: '+e.message,'err')); },
+      remove(id){ col.doc(id).delete().catch(()=>{}); }
+    };
+    let first = true;
+    col.onSnapshot(snap => {
+      cards = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(first){ first=false;
+        const have = new Set(cards.map(c=>c.id));
+        pending.filter(c=>!have.has(c.id)).forEach(c=>{ cards.push(c); store.save(c); });
+        try{ localStorage.removeItem(LS); }catch{}
+      }
+      render();
+    }, e => say('#capStatus','Sync paused: '+e.message,'err'));
+  }catch{}
+}
+
+/* ---------- rendering ---------- */
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function say(sel,msg,kind){ const el=$(sel); el.textContent=msg||''; el.className='status'+(kind?' '+kind:''); }
+
+function render(){
+  cards.sort((a,b)=>(b.created||0)-(a.created||0));
+  const todo = cards.filter(c=>!complete(c)), fresh = cards.filter(c=>!c.exported);
+  $('#stats').innerHTML =
+    `<span class="chip">${cards.length} total</span><span class="chip ok">${fresh.length} to export</span>` +
+    (todo.length?`<span class="chip warn">${todo.length} incomplete</span>`:'');
+  $('#fillBtn').hidden = !todo.length || fillUnavailable;
+  $('#fillBtn').textContent = `Fill ${todo.length} with Claude`;
+  const done = cards.filter(c=>c.exported).length;
+  const pb = $('#purgeBtn'); if(!pb.classList.contains('armed')){ pb.disabled = !done; pb.textContent = done?`Delete ${done} exported card${done>1?'s':''}`:'Delete exported cards'; }
+  const shown = filter==='all'?cards:filter==='todo'?todo:fresh;
+  const box = $('#cards');
+  if(!shown.length){
+    box.innerHTML = `<div class="empty">${cards.length? 'Nothing here. Switch the filter above to see other cards.' : 'Your deck is empty. Paste phrases on the left and tap <b>Add to deck</b>; they stay here, synced, until you export.'}</div>`;
+    return;
+  }
+  box.innerHTML = shown.map(c=>`
+    <div class="card${complete(c)?'':' incomplete'}" data-id="${c.id}">
+      <div class="fields">
+        <input class="han" data-k="hanzi" value="${esc(c.hanzi)}" placeholder="characters missing" aria-label="Characters">
+        <input class="py" data-k="pinyin" value="${esc(c.pinyin)}" placeholder="pinyin missing" aria-label="Pinyin">
+        <input class="en" data-k="english" value="${esc(c.english)}" placeholder="English missing" aria-label="English">
+      </div>
+      <div class="side">
+        <button class="ghost" data-del aria-label="Delete card">✕</button>
+        <span class="tag${c.exported?' sent':''}">${c.exported?'exported':'new'}</span>
+      </div>
+    </div>`).join('');
+}
+
+/* ---------- actions ---------- */
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+
+$('#addBtn').onclick = () => {
+  const parsed = parse($('#paste').value);
+  if(!parsed.length){ say('#capStatus','Nothing to add yet. Paste at least one phrase.','err'); return; }
+  const now = Date.now();
+  parsed.forEach((p,i)=>{
+    const c = {id:uid(), hanzi:p.hanzi||'', pinyin:p.pinyin||'', english:p.english||'', created:now-i, exported:false};
+    if(c.hanzi && !c.pinyin){ c.pinyin = autoPinyin(c.hanzi); }
+    cards.push(c); store.save(c);
+  });
+  const missing = parsed.length - cards.filter(c=>c.created>now-parsed.length && complete(c)).length;
+  $('#paste').value = ''; saveDraft();
+  say('#capStatus', `Added ${parsed.length} card${parsed.length>1?'s':''}.` + (missing? ` ${missing} still need filling.`:''), 'good');
+  filter = 'new'; syncFilter(); render();
+};
+$('#clearBtn').onclick = () => { $('#paste').value=''; saveDraft(); say('#capStatus',''); };
+
+$('#cards').addEventListener('change', e => {
+  const inp = e.target.closest('input[data-k]'); if(!inp) return;
+  const c = cards.find(x=>x.id===inp.closest('.card').dataset.id); if(!c) return;
+  c[inp.dataset.k] = inp.value.trim();
+  if(inp.dataset.k==='hanzi' && c.hanzi && !c.pinyin) c.pinyin = autoPinyin(c.hanzi);
+  store.save(c); render();
+});
+$('#cards').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if(!b) return;
+  const id = b.closest('.card').dataset.id;
+  cards = cards.filter(c=>c.id!==id); store.remove(id); render();
+});
+function syncFilter(){ document.querySelectorAll('.filter button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.f===filter)); }
+document.querySelectorAll('.filter button').forEach(b=>b.onclick=()=>{ filter=b.dataset.f; syncFilter(); render(); });
+
+/* ---------- Claude fill ---------- */
+let sample = null, fillUnavailable = true;
+use('sample').then(s=>{ sample=s; fillUnavailable=!s; render(); }).catch(()=>{});
+
+$('#fillBtn').onclick = async () => {
+  const todo = cards.filter(c=>!complete(c)).slice(0,40);
+  if(!todo.length || !sample) return;
+  const btn = $('#fillBtn'); btn.disabled = true;
+  say('#fillStatus',`Asking Claude to fill ${todo.length} card${todo.length>1?'s':''}…`);
+  const items = todo.map(c=>({id:c.id, hanzi:c.hanzi||null, pinyin:c.pinyin||null, english:c.english||null}));
+  const prompt = `You are helping a learner of Mandarin build flashcards. Each item below has at least one of: hanzi (Simplified Chinese), pinyin, english. Fill in every null field.
+Rules:
+- Translate English into natural, everyday spoken Mandarin as used in mainland China, in Simplified characters, with natural punctuation.
+- Pinyin uses tone marks (not numbers), with syllables of one word written together and words separated by spaces, e.g. "Wǒ xiǎng diǎn yì bēi kāfēi." Reflect tone sandhi only where it is conventionally written (yí/yì, bú).
+- English is a short, natural meaning of the Chinese.
+- Keep every field that is not null exactly as given.
+Reply with only a JSON array of objects {"id","hanzi","pinyin","english"}, one per item, same ids.
+
+Items:
+${JSON.stringify(items)}`;
+  try{
+    const out = await sample.json(prompt,{modelTier:'default'});
+    let n=0;
+    for(const r of Array.isArray(out)?out:[]){
+      const c = cards.find(x=>x.id===r.id); if(!c) continue;
+      for(const k of ['hanzi','pinyin','english']) if(!c[k] && typeof r[k]==='string' && r[k].trim()) c[k]=r[k].trim();
+      store.save(c); n++;
+    }
+    say('#fillStatus', `Filled ${n} card${n===1?'':'s'}. Check them before exporting.`, 'good');
+  }catch(e){
+    const msg = {not_granted:'Claude access was declined for this page.',rate_limited:'Too many requests just now. Try again in a minute.',invalid_json:'Claude’s answer could not be read. Try again.'}[e.code] || ('Could not fill: '+(e.message||e.code));
+    say('#fillStatus', msg, 'err');
+    if(e.code==='not_granted'){ fillUnavailable=true; }
+  }finally{ btn.disabled=false; render(); }
+};
+
+/* ---------- export ---------- */
+const clean = s => String(s||'').replace(/[\t\r\n]+/g,' ').trim();
+function buildFile(list){
+  const cat = clean($('#category').value).replace(/^\/+/,'');
+  const lines = [];
+  if(cat) lines.push('//'+cat);
+  for(const c of list) lines.push([clean(c.hanzi), clean(c.pinyin), clean(c.english)].join('\t'));
+  return lines.join('\n')+'\n';
+}
+function exportList(){
+  const scope = $('#scope').value;
+  return cards.filter(c=>c.hanzi && (scope==='all' || !c.exported)).slice().sort((a,b)=>a.created-b.created);
+}
+function markExported(list){ list.forEach(c=>{ if(!c.exported){ c.exported=true; store.save(c);} }); render(); }
+function showFallback(text){ const f=$('#fallback'); f.hidden=false; f.value=text; f.focus(); f.select(); }
+
+$('#exportBtn').onclick = async () => {
+  const list = exportList();
+  if(!list.length){ say('#expStatus','No cards to export. Cards need characters to be imported into Pleco.','err'); return; }
+  const skipped = cards.filter(c=>!c.hanzi && ($('#scope').value==='all'||!c.exported)).length;
+  const text = buildFile(list);
+  const name = `pleco-${new Date().toISOString().slice(0,10)}.txt`;
+  let dl = null; try{ dl = await use('downloads'); }catch{}
+  if(!dl){ showFallback(text); say('#expStatus','Saving files isn’t available here. Copy the text below into a .txt file instead.','err'); return; }
+  try{
+    await dl.save({filename:name, data:new Blob([text],{type:'text/plain;charset=utf-8'})});
+    markExported(list);
+    say('#expStatus', `Saved ${list.length} card${list.length>1?'s':''} to ${name}.` + (skipped?` ${skipped} without characters were left out.`:''), 'good');
+  }catch(e){
+    if(e.code==='declined') say('#expStatus','Save cancelled. Nothing was marked as exported.');
+    else { showFallback(text); say('#expStatus','Could not save the file. Copy the text below instead.','err'); }
+  }
+};
+$('#copyBtn').onclick = () => {
+  const list = exportList();
+  if(!list.length){ say('#expStatus','No cards to copy.','err'); return; }
+  const text = buildFile(list);
+  navigator.clipboard.writeText(text).then(
+    ()=>{ markExported(list); say('#expStatus',`Copied ${list.length} cards. Paste into a .txt file to import.`,'good'); },
+    ()=>{ showFallback(text); say('#expStatus','Copy was blocked. The text is selected below.','err'); });
+};
+
+let armTimer = null;
+$('#purgeBtn').onclick = () => {
+  const b = $('#purgeBtn'), done = cards.filter(c=>c.exported);
+  if(!done.length) return;
+  if(!b.classList.contains('armed')){
+    b.classList.add('armed'); b.textContent = `Tap again to delete ${done.length}`;
+    armTimer = setTimeout(()=>{ b.classList.remove('armed'); render(); }, 4000); return;
+  }
+  clearTimeout(armTimer); b.classList.remove('armed');
+  const ids = new Set(done.map(c=>c.id));
+  cards = cards.filter(c=>!ids.has(c.id)); ids.forEach(id=>store.remove(id));
+  say('#expStatus', `Deleted ${ids.size} exported card${ids.size>1?'s':''}. Unexported cards were kept.`, 'good'); render();
+};
+
+/* ---------- draft + prefs ---------- */
+function saveDraft(){ try{ localStorage.setItem('pleco-catcher-draft',$('#paste').value); }catch{} }
+try{ $('#paste').value = localStorage.getItem('pleco-catcher-draft')||''; $('#category').value = localStorage.getItem('pleco-catcher-cat')||$('#category').value; }catch{}
+$('#paste').addEventListener('input', saveDraft);
+$('#category').addEventListener('change', ()=>{ try{ localStorage.setItem('pleco-catcher-cat',$('#category').value); }catch{} });
+
+window.__parse = parse;
+render();
+connectDb();
+})();
+</script>
