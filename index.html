@@ -181,9 +181,26 @@ function splitLatin(s){
   // leading toned tokens are pinyin, the rest is English
   const toks = s.trim().split(/\s+/); let i = 0;
   const NEUTRAL = /^(ma|le|de|ne|ba|a|ya|wa|la|zi|men|me|ge|zhe|guo|li|shang|tou|mian|bian)[,.?!。？！，]?$/i;
-  while(i < toks.length && (TONED.test(toks[i]) || (i>0 && pinyinish(toks[i]) && (NEUTRAL.test(toks[i]) || toks.slice(i+1).some(t=>TONED.test(t)))))) i++;
+  const ACRONYM = /^[A-Z0-9][A-Za-z0-9]*[A-Z0-9][,.?!]?$|^[a-z][A-Z][A-Za-z0-9]*[,.?!]?$/;   // VPN, KTV, 4G, iPhone
+  const later = j => toks.slice(j+1).some(t=>TONED.test(t));
+  const ok = j => TONED.test(toks[j]) || NEUTRAL.test(toks[j]) || ACRONYM.test(toks[j]) || (pinyinish(toks[j]) && later(j));
+  while(i < toks.length && ok(i)) i++;
+  // trim trailing untoned words that aren't particles/abbreviations back to English
+  if(!toks.slice(0,i).some(t=>TONED.test(t))) i = 0;
   if(i===0) return {english:s.trim()};
   return {pinyin:toks.slice(0,i).join(' '), english:toks.slice(i).join(' ')};
+}
+
+function hanSpan(p){
+  const isHan = ch => HAN.test(ch);
+  let start = [...p].length ? p.search(HAN) : 0, end = start;
+  for(let i=start;i<p.length;i++) if(isHan(p[i])) end = i+1;
+  // pull in Latin letters/digits written directly against the characters, e.g. 用VPN吗, iPhone很贵
+  while(start>0 && /[A-Za-z0-9]/.test(p[start-1])) start--;
+  while(end<p.length && /[A-Za-z0-9]/.test(p[end])) end++;
+  // trailing Chinese or full-width punctuation
+  while(end<p.length && /[\u3000-\u303f\uff00-\uffef]/.test(p[end])) end++;
+  return {start, end};
 }
 
 function parseLine(line){
@@ -192,10 +209,10 @@ function parseLine(line){
   const latin = [];
   for(const p of parts){
     if(HAN.test(p)){
-      const m = p.match(HAN_RUN);
-      const han = m[0].trim();
+      const m = hanSpan(p);
+      const han = p.slice(m.start, m.end).trim();
       if(!out.hanzi) out.hanzi = han;
-      const rest = (p.slice(0,m.index) + ' ' + p.slice(m.index+m[0].length)).trim();
+      const rest = (p.slice(0,m.start) + ' ' + p.slice(m.end)).trim();
       if(rest) latin.push(rest);
     } else latin.push(p);
   }
